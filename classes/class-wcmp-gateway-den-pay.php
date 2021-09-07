@@ -1,8 +1,15 @@
 <?php
 
-if (!defined('ABSPATH')) {
-    exit;
-}
+require_once __DIR__.'/../src/Api.php';
+
+// if (!defined('ABSPATH')) {
+//     exit;
+// }
+
+//namespace iPay\Api\Api;
+
+//require_once 'wcmp-den-payment/src/Api.php';
+use iPay\Api\Api;
 
 class WCMp_Gateway_Den extends WCMp_Payment_Gateway {
 	public $id;
@@ -10,6 +17,7 @@ class WCMp_Gateway_Den extends WCMp_Payment_Gateway {
     private $test_mode = false;
     private $payout_mode = 'true';
     private $reciver_email;
+    private $reciver_phone;
     private $key_id;
     private $key_secret;
     private $api = '';
@@ -33,6 +41,7 @@ class WCMp_Gateway_Den extends WCMp_Payment_Gateway {
         $this->currency = get_woocommerce_currency();
         $this->transaction_mode = $transaction_mode;
         $this->reciver_email = wcmp_get_user_meta($this->vendor->id, '_vendor_den_account_id', true);
+        $this->reciver_phone = wcmp_get_user_meta($this->vendor->id,'_vendor_phone');
         if ($this->validate_request()) {
             $paypal_response = $this->process_den_payout();
             doProductVendorLOG(json_encode($paypal_response['error']));
@@ -91,7 +100,7 @@ class WCMp_Gateway_Den extends WCMp_Payment_Gateway {
         if ($this->api && is_array($this->commissions)) {
             foreach ($this->commissions as $commission_id) {
                 $commissionResponse = array();
-                //check the order is payed with razor pay or not!!
+                //check the order is payed with den pay or not!!
                 $vendor_order_id = wcmp_get_commission_order_id($commission_id);
                 //get order details
                 if ($vendor_order_id) {
@@ -131,10 +140,11 @@ class WCMp_Gateway_Den extends WCMp_Payment_Gateway {
                                 . " Unable to Process #$commission_id Commission!!";
                             $commissionResponse['type'] = 'error';
                         } else {
-                            $final_amount_to_oay = (float) ($amount_to_pay * 100);
+                            $final_amount_to_pay = (float) ($amount_to_pay * 100);
                             //get payment details
                             try {
-                                $transfer  = $this->api->payment->fetch($order_transaction_id)->transfer(array('transfers' => [ ['account' => $this->reciver_email, 'amount' => $final_amount_to_oay, 'currency' => $this->currency]]));
+                                // $transfer  = $this->api->payment->fetch($order_transaction_id)->transfer(array('transfers' => [ ['account' => $this->reciver_email, 'amount' => $final_amount_to_oay, 'currency' => $this->currency]]));
+                                $transfer  = $this->api->mobilMoneyPayment($final_amount_to_pay,$this->reciver_phone, $this->reciver_email, $order_transaction_id);
                                 if ($transfer) {
                                     $response_success['success'] = 'success';
                                     $response_success['commission_id'][] = $commission_id;
